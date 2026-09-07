@@ -39,6 +39,7 @@ from strands_tools.browser import AgentCoreBrowser
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger("CSAI_Agent")
+logger.setLevel(logging.INFO)
 
 # ── TODO 1 — App Initialisation ───────────────────────────────────────────────
 # Create a BedrockAgentCoreApp instance.
@@ -447,8 +448,25 @@ async def invoke(payload, context=None):
             lambda: streamable_http_client(GATEWAY_URL)
         )
         with gateway_client:
-            gateway_tools = gateway_client.list_tools_sync()
-            tools.extend(gateway_tools)
+            try:
+                gateway_tools = gateway_client.list_tools_sync()
+                tools.extend(gateway_tools)
+
+                logger.info(
+                    "Gateway connected successfully. Loaded %d tools.",
+                    len(gateway_tools),
+                )
+
+            except TimeoutError:
+                logger.exception("Gateway tool loading timed out")
+
+            except ConnectionError:
+                logger.exception("Gateway connection failed")
+
+            except Exception as exc:
+                logger.exception(
+                    "Gateway tool loading failed: %s", exc
+                )
 
             agent = Agent(
                 model=model,
